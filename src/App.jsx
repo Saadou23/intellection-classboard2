@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Save, X, Monitor, Settings, AlertCircle, Maximize, Clock } from 'lucide-react';
+import { db } from './firebase';
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 
 const ClassBoard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -50,21 +52,24 @@ const ClassBoard = () => {
 
   const [formData, setFormData] = useState(formInitialState);
 
-  // ========== FONCTIONS DE STOCKAGE (localStorage au lieu de window.storage) ==========
-  const loadTimeOffset = () => {
+  // ========== FONCTIONS FIREBASE ==========
+  const loadTimeOffset = async () => {
     try {
-      const stored = localStorage.getItem('intellection_time_offset');
-      if (stored) {
-        setTimeOffset(parseInt(stored));
+      const docRef = doc(db, 'settings', 'timeOffset');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setTimeOffset(docSnap.data().value || 0);
       }
     } catch (error) {
       console.log('Pas de réglage horaire');
     }
   };
 
-  const saveTimeOffset = (offset) => {
+  const saveTimeOffset = async (offset) => {
     try {
-      localStorage.setItem('intellection_time_offset', offset.toString());
+      await setDoc(doc(db, 'settings', 'timeOffset'), {
+        value: offset
+      });
       setTimeOffset(offset);
     } catch (error) {
       console.error('Erreur de sauvegarde:', error);
@@ -72,26 +77,32 @@ const ClassBoard = () => {
   };
 
   const loadBranchData = (branch) => {
-    try {
-      const stored = localStorage.getItem(`intellection_${branch}`);
-      if (stored) {
-        const data = JSON.parse(stored);
+    const docRef = doc(db, 'branches', branch);
+    
+    // Écoute en temps réel des changements
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
         setSessions(prev => ({ ...prev, [branch]: data.sessions || [] }));
         setAdminMessage(data.adminMessage || '');
       }
-    } catch (error) {
-      console.log('Pas de données pour cette filiale');
-    }
+    }, (error) => {
+      console.log('Pas de données pour cette filiale:', error);
+    });
+
+    return unsubscribe;
   };
 
-  const saveBranchData = (branch, branchSessions) => {
+  const saveBranchData = async (branch, branchSessions) => {
     try {
-      localStorage.setItem(`intellection_${branch}`, JSON.stringify({
+      await setDoc(doc(db, 'branches', branch), {
         sessions: branchSessions,
-        adminMessage: adminMessage
-      }));
+        adminMessage: adminMessage,
+        lastUpdated: new Date().toISOString()
+      });
     } catch (error) {
       console.error('Erreur de sauvegarde:', error);
+      alert('Erreur lors de la sauvegarde. Vérifiez votre connexion.');
     }
   };
 
@@ -107,7 +118,8 @@ const ClassBoard = () => {
 
   useEffect(() => {
     if (selectedBranch) {
-      loadBranchData(selectedBranch);
+      const unsubscribe = loadBranchData(selectedBranch);
+      return () => unsubscribe && unsubscribe();
     }
   }, [selectedBranch]);
 
@@ -319,7 +331,7 @@ const ClassBoard = () => {
             </button>
 
             <p className="text-xs text-blue-300 text-center mt-4">
-              Démo: utilisez "admin123" comme mot de passe
+              Mot de passe par défaut: admin123
             </p>
           </div>
         </div>
