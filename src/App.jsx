@@ -124,12 +124,6 @@ const ClassBoard = () => {
   }, [selectedBranch]);
 
   useEffect(() => {
-    if (selectedBranch && sessions[selectedBranch]) {
-      saveBranchData(selectedBranch, sessions[selectedBranch]);
-    }
-  }, [sessions, selectedBranch, adminMessage]);
-
-  useEffect(() => {
     loadTimeOffset();
   }, []);
 
@@ -154,7 +148,7 @@ const ClassBoard = () => {
     }
   };
 
-  const addOrUpdateSession = () => {
+  const addOrUpdateSession = async () => {
     if (!selectedBranch) {
       alert('Veuillez sélectionner une filiale');
       return;
@@ -170,19 +164,21 @@ const ClassBoard = () => {
       ? branchSessions.map(s => s.id === editingSession.id ? newSession : s)
       : [...branchSessions, newSession];
 
-    setSessions({ ...sessions, [selectedBranch]: updatedSessions });
+    // Sauvegarder immédiatement dans Firebase
+    await saveBranchData(selectedBranch, updatedSessions);
+    
     setFormData(formInitialState);
     setEditingSession(null);
     setShowAddForm(false);
   };
 
-  const deleteSession = (id) => {
+  const deleteSession = async (id) => {
     if (confirm('Confirmer la suppression ?')) {
       const branchSessions = sessions[selectedBranch] || [];
-      setSessions({
-        ...sessions,
-        [selectedBranch]: branchSessions.filter(s => s.id !== id)
-      });
+      const updatedSessions = branchSessions.filter(s => s.id !== id);
+      
+      // Sauvegarder immédiatement dans Firebase
+      await saveBranchData(selectedBranch, updatedSessions);
     }
   };
 
