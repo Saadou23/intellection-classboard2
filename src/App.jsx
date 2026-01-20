@@ -4,6 +4,8 @@ import { db } from './firebase';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 
 const ClassBoard = () => {
+  console.log("🌟 Composant ClassBoard rendu");
+  
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState('');
@@ -77,19 +79,37 @@ const ClassBoard = () => {
   };
 
   const loadBranchData = (branch) => {
+    console.log("🔥 loadBranchData appelé pour:", branch);
+    console.log("🔥 db:", db);
     const docRef = doc(db, 'branches', branch);
+    console.log("🔥 docRef créé");
     
     // Écoute en temps réel des changements
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      console.log("📡 onSnapshot déclenché");
+      console.log("📡 docSnap.exists():", docSnap.exists());
+      
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setSessions(prev => ({ ...prev, [branch]: data.sessions || [] }));
+        console.log("✅ Données Firebase reçues:", data);
+        console.log("✅ data.sessions:", data.sessions);
+        console.log("✅ Nombre de sessions:", data.sessions?.length);
+        
+        setSessions(prev => {
+          console.log("✅ setSessions - prev:", prev);
+          const newSessions = { ...prev, [branch]: data.sessions || [] };
+          console.log("✅ setSessions - newSessions:", newSessions);
+          return newSessions;
+        });
         setAdminMessage(data.adminMessage || '');
+      } else {
+        console.log("❌ Document n'existe pas pour:", branch);
       }
     }, (error) => {
-      console.log('Pas de données pour cette filiale:', error);
+      console.error('💥 Erreur onSnapshot:', error);
     });
 
+    console.log("🔥 unsubscribe function créée");
     return unsubscribe;
   };
 
@@ -117,9 +137,14 @@ const ClassBoard = () => {
   }, [timeOffset]);
 
   useEffect(() => {
+    console.log("🎯 useEffect selectedBranch déclenché, selectedBranch:", selectedBranch);
     if (selectedBranch) {
+      console.log("🎯 Appel de loadBranchData pour:", selectedBranch);
       const unsubscribe = loadBranchData(selectedBranch);
-      return () => unsubscribe && unsubscribe();
+      return () => {
+        console.log("🎯 Cleanup - unsubscribe appelé");
+        unsubscribe && unsubscribe();
+      };
     }
   }, [selectedBranch]);
 
@@ -201,22 +226,49 @@ const ClassBoard = () => {
   };
 
   const getTodaySessions = () => {
+    console.log("📅 ========== DEBUT getTodaySessions ==========");
+    console.log("📅 currentTime:", currentTime);
+    console.log("📅 currentTime.getDay():", currentTime.getDay());
+    
     const currentDayOfWeek = currentTime.getDay();
+    console.log("📅 currentDayOfWeek:", currentDayOfWeek);
+    console.log("📅 selectedBranch:", selectedBranch);
+    console.log("📅 sessions:", sessions);
+    console.log("📅 sessions[selectedBranch]:", sessions[selectedBranch]);
+    
     const branchSessions = sessions[selectedBranch] || [];
+    console.log("📅 branchSessions:", branchSessions);
+    console.log("📅 Nombre total de sessions:", branchSessions.length);
     
     const todaySessions = branchSessions
-      .filter(s => s.dayOfWeek === currentDayOfWeek)
+      .filter(s => {
+        const match = s.dayOfWeek === currentDayOfWeek;
+        console.log(`📅 Session ${s.id}: dayOfWeek=${s.dayOfWeek}, currentDay=${currentDayOfWeek}, match=${match}`);
+        return match;
+      })
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    
+    console.log("📅 todaySessions après filtre jour:", todaySessions);
+    console.log("📅 Nombre après filtre jour:", todaySessions.length);
     
     const currentHour = currentTime.getHours();
     const currentMin = currentTime.getMinutes();
     const currentMinutes = currentHour * 60 + currentMin;
+    console.log("📅 Heure actuelle:", currentHour + ":" + currentMin, "(", currentMinutes, "minutes)");
     
-    return todaySessions.filter(session => {
+    const finalSessions = todaySessions.filter(session => {
       const [startHour, startMin] = session.startTime.split(':').map(Number);
       const startMinutes = startHour * 60 + startMin;
-      return startMinutes >= (currentMinutes - 15);
+      const shouldShow = startMinutes >= (currentMinutes - 15);
+      console.log(`📅 Session ${session.startTime}: startMin=${startMinutes}, currentMin=${currentMinutes}, shouldShow=${shouldShow}`);
+      return shouldShow;
     }).slice(0, 6);
+    
+    console.log("📅 finalSessions:", finalSessions);
+    console.log("📅 Nombre final à afficher:", finalSessions.length);
+    console.log("📅 ========== FIN getTodaySessions ==========");
+    
+    return finalSessions;
   };
 
   const isSessionOngoing = (session) => {
@@ -364,7 +416,11 @@ const ClassBoard = () => {
                 {branches.map(branch => (
                   <button
                     key={branch}
-                    onClick={() => setSelectedBranch(branch)}
+                    onClick={() => {
+                      console.log("🖱️ Clic sur filiale:", branch);
+                      setSelectedBranch(branch);
+                      console.log("🖱️ setSelectedBranch appelé avec:", branch);
+                    }}
                     className="bg-blue-800 hover:bg-blue-700 px-8 py-6 rounded-xl font-semibold text-xl transition-all transform hover:scale-105"
                   >
                     {branch}
