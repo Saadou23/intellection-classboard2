@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, Monitor, Settings, AlertCircle, Maximize, Clock } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Monitor, Settings, AlertCircle, Maximize, Clock, BarChart3 } from 'lucide-react';
 import { db } from './firebase';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import Dashboard from './Dashboard';
 
 const ClassBoard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -326,7 +327,7 @@ const ClassBoard = () => {
             </button>
 
             <p className="text-xs text-blue-300 text-center mt-4">
-              Mot de passe par défaut: admin123
+              Mot de passe par défaut: admin
             </p>
           </div>
         </div>
@@ -521,6 +522,11 @@ const ClassBoard = () => {
   }
 
   // ========== INTERFACE ADMIN ==========
+  // Si on est sur le dashboard
+  if (view === 'dashboard') {
+    return <Dashboard sessions={sessions} onBack={() => setView('admin')} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-blue-900 text-white p-4 shadow-lg">
@@ -530,6 +536,13 @@ const ClassBoard = () => {
             <p className="text-blue-200 text-sm">Interface de gestion</p>
           </div>
           <div className="flex gap-3">
+            <button
+              onClick={() => setView('dashboard')}
+              className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-sm"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Dashboard
+            </button>
             <button
               onClick={() => setShowTimeSettings(!showTimeSettings)}
               className="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-sm"
